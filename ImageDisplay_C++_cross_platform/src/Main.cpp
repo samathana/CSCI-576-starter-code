@@ -30,7 +30,7 @@ class MyApp : public wxApp {
  */
 class MyFrame : public wxFrame {
  public:
-  MyFrame(const wxString &title, string imagePath);
+  MyFrame(const wxString &title, string imagePath, float s, int q, int m);
 
  private:
   void OnPaint(wxPaintEvent &event);
@@ -41,7 +41,7 @@ class MyFrame : public wxFrame {
 };
 
 /** Utility function to read image data */
-unsigned char *readImageData(string imagePath, int width, int height);
+unsigned char *readImageData(string imagePath, int width, int height, float scale, int quant, int mode);
 
 /** Definitions */
 
@@ -55,17 +55,21 @@ bool MyApp::OnInit() {
 
   // deal with command line arguments here
   cout << "Number of command line arguments: " << wxApp::argc << endl;
-  if (wxApp::argc != 2) {
+  if (wxApp::argc != 5) {
     cerr << "The executable should be invoked with exactly one filepath "
-            "argument. Example ./MyImageApplication '../../Lena_512_512.rgb'"
+            "argument, Scale (0.0-1.0), Quantization (1-8), and Mode (-1-255). "
+            "Example ./MyImageApplication '../../Lena_512_512.rgb'"
          << endl;
     exit(1);
   }
   cout << "First argument: " << wxApp::argv[0] << endl;
   cout << "Second argument: " << wxApp::argv[1] << endl;
+  cout << "Third argument: " << wxApp::argv[2] << endl;
+  cout << "Fourth argument: " << wxApp::argv[3] << endl;
+  cout << "Fifth argument: " << wxApp::argv[4] << endl;
   string imagePath = wxApp::argv[1].ToStdString();
 
-  MyFrame *frame = new MyFrame("Image Display", imagePath);
+  MyFrame *frame = new MyFrame("Image Display", imagePath, stof((wxApp::argv[2]).ToStdString()), stoi((wxApp::argv[3]).ToStdString()), stoi((wxApp::argv[4]).ToStdString()));
   frame->Show(true);
 
   // return true to continue, false to exit the application
@@ -76,7 +80,7 @@ bool MyApp::OnInit() {
  * Constructor for the MyFrame class.
  * Here we read the pixel data from the file and set up the scrollable window.
  */
-MyFrame::MyFrame(const wxString &title, string imagePath)
+MyFrame::MyFrame(const wxString &title, string imagePath, float s, int q, int m)
     : wxFrame(NULL, wxID_ANY, title) {
 
   // Modify the height and width values here to read and display an image with
@@ -84,7 +88,10 @@ MyFrame::MyFrame(const wxString &title, string imagePath)
   width = 512;
   height = 512;
 
-  unsigned char *inData = readImageData(imagePath, width, height);
+  unsigned char *inData = readImageData(imagePath, width, height, s, q, m);
+  
+  width *= s;
+  height *= s;
 
   // the last argument is static_data, if it is false, after this call the
   // pointer to the data is owned by the wxImage object, which will be
@@ -120,7 +127,7 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
 }
 
 /** Utility function to read image data */
-unsigned char *readImageData(string imagePath, int width, int height) {
+unsigned char *readImageData(string imagePath, int width, int height, float scale, int quant, int mode) {
 
   // Open the file in binary mode
   ifstream inputFile(imagePath, ios::binary);
@@ -148,20 +155,39 @@ unsigned char *readImageData(string imagePath, int width, int height) {
 
   inputFile.close();
 
+  /* scale down */
+  int newSize = (int) (scale * (float) width * scale * (float) height);
+  vector<char> newR(newSize);
+  vector<char> newG(newSize);
+  vector<char> newB(newSize);
+
+  int newPlacement;
+  float reverseScale = 1/scale;
+  int currHeight;
+  int currWidth;
+  for (int i = 0; i < newSize; i++) {
+    currHeight = i / (height * scale);
+    currWidth = i % (int) (width * scale);
+    newPlacement = currHeight * reverseScale * width + (currWidth * reverseScale);
+    newR[i] = Rbuf[newPlacement];
+    newG[i] = Gbuf[newPlacement];
+    newB[i] = Bbuf[newPlacement];
+  }
+
   /**
    * Allocate a buffer to store the pixel values
    * The data must be allocated with malloc(), NOT with operator new. wxWidgets
    * library requires this.
    */
   unsigned char *inData =
-      (unsigned char *)malloc(width * height * 3 * sizeof(unsigned char));
+      (unsigned char *)malloc(newSize * 3 * sizeof(unsigned char));
       
-  for (int i = 0; i < height * width; i++) {
+  for (int i = 0; i < newSize; i++) {
     // We populate RGB values of each pixel in that order
     // RGB.RGB.RGB and so on for all pixels
-    inData[3 * i] = Rbuf[i];
-    inData[3 * i + 1] = Gbuf[i];
-    inData[3 * i + 2] = Bbuf[i];
+    inData[3 * i] = newR[i];
+    inData[3 * i + 1] = newG[i];
+    inData[3 * i + 2] = newB[i];
   }
 
   return inData;
