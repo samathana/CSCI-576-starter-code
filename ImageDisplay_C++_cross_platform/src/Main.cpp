@@ -169,9 +169,15 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
     currHeight = i / (height * scale);
     currWidth = i % (int) (width * scale);
     newPlacement = currHeight * reverseScale * width + (currWidth * reverseScale);
-    newR[i] = Rbuf[newPlacement];
-    newG[i] = Gbuf[newPlacement];
-    newB[i] = Bbuf[newPlacement];
+    if (newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
+      newR[i] = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
+      newG[i] = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
+      newB[i] = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
+    } else {
+      newR[i] = Rbuf[newPlacement];
+      newG[i] = Gbuf[newPlacement];
+      newB[i] = Bbuf[newPlacement];
+    }
   }
 
   /**
