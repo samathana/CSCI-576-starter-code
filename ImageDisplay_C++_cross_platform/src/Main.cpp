@@ -165,18 +165,31 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
   float reverseScale = 1/scale;
   int currHeight;
   int currWidth;
+  int round;
+  int bitIntervals = 1;
+  for (int i = 0; i < quant; i++)
+    bitIntervals *= 2;
+  bitIntervals = 256 / bitIntervals;
+
   for (int i = 0; i < newSize; i++) {
     currHeight = i / (height * scale);
     currWidth = i % (int) (width * scale);
     newPlacement = currHeight * reverseScale * width + (currWidth * reverseScale);
     if (newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
-      newR[i] = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
-      newG[i] = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
-      newB[i] = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
+    if (scale < 1 && newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
+      round = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
+      round = (round+1) / bitIntervals * bitIntervals;
+      newR[i] = round;
+      round = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
+      round = (round+1) / bitIntervals * bitIntervals;
+      newG[i] = round;
+      round = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
+      round = (round+1) / bitIntervals * bitIntervals;
+      newB[i] = round;
     } else {
-      newR[i] = Rbuf[newPlacement];
-      newG[i] = Gbuf[newPlacement];
-      newB[i] = Bbuf[newPlacement];
+      newR[i] = (int)(unsigned char)Rbuf[newPlacement] / bitIntervals * bitIntervals;
+      newG[i] = (int)(unsigned char)Gbuf[newPlacement] / bitIntervals * bitIntervals;
+      newB[i] = (int)(unsigned char)Bbuf[newPlacement] / bitIntervals * bitIntervals;
     }
   }
 
