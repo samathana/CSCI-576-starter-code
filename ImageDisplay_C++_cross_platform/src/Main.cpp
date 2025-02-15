@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <set>
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -170,6 +171,7 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
   for (int i = 0; i < quant; i++)
     bitIntervals *= 2; //2^quant
   bitIntervals = 256 / bitIntervals; //round to the nearest
+  std::set<int> values;
 
   for (int i = 0; i < newSize; i++) {
     currHeight = i / (height * scale);
@@ -179,17 +181,22 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
       if (scale < 1 && newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
         round = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
         round = round / bitIntervals * bitIntervals; //round to the nearest value
-        newR[i] = round; 
+        newR[i] = round + (bitIntervals / 2);
+        if (values.find(round + (bitIntervals / 2)) == values.end())
+          values.insert(round + (bitIntervals / 2));
         round = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
         round = round / bitIntervals * bitIntervals;
-        newG[i] = round;
+        newG[i] = round + (bitIntervals / 2);
         round = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
         round = round / bitIntervals * bitIntervals;
-        newB[i] = round;
+        newB[i] = round + (bitIntervals / 2);
       } else { //edge cases don't use filter, scale 1 doesn't use filter
-        newR[i] = (int)(unsigned char)Rbuf[newPlacement] / bitIntervals * bitIntervals;
-        newG[i] = (int)(unsigned char)Gbuf[newPlacement] / bitIntervals * bitIntervals;
-        newB[i] = (int)(unsigned char)Bbuf[newPlacement] / bitIntervals * bitIntervals;
+        round = (int)(unsigned char)Rbuf[newPlacement] / bitIntervals * bitIntervals + (bitIntervals / 2);
+        if (values.find(round) == values.end()) //for printing
+          values.insert(round);
+        newR[i] = round;
+        newG[i] = (int)(unsigned char)Gbuf[newPlacement] / bitIntervals * bitIntervals + (bitIntervals / 2);
+        newB[i] = (int)(unsigned char)Bbuf[newPlacement] / bitIntervals * bitIntervals + (bitIntervals / 2);
       }
     } else { //non-uniform
        if (scale < 1 && newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
@@ -209,6 +216,10 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
       }
     }
   }
+
+  cout << "Red values found:" << endl;
+  for (auto & i:values)
+    cout << i << endl;
 
   /**
    * Allocate a buffer to store the pixel values
