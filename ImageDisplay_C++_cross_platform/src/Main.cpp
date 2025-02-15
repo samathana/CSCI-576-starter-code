@@ -127,6 +127,35 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
   dc.DrawBitmap(inImageBitmap, 0, 0, false);
 }
 
+int logQuant(int value, int pivot, int numIntervals) {
+    if (value == pivot) { //avoid log(0)
+        return pivot;
+    }
+
+    // Logarithmic scaling function
+    auto logScale = [](int x, int pivot) {
+        return std::copysign(std::log1p(std::abs(x - pivot)), x - pivot);
+    };
+
+    // Normalize the logarithmic function to [0, numIntervals - 1]
+    double logMin = logScale(0, pivot);
+    double logMax = logScale(255, pivot);
+    double normalized = (logScale(value, pivot) - logMin) / (logMax - logMin) * (numIntervals - 1);
+
+    // Quantize to the nearest interval
+    int quantizedIndex = static_cast<int>(std::round(normalized));
+
+    // Map the quantized index back to the original range
+    double intervalSize = (logMax - logMin) / (numIntervals - 1);
+    double quantizedLogValue = logMin + quantizedIndex * intervalSize;
+
+    // Inverse of the logarithmic function to get the quantized value
+    int quantizedValue = pivot + std::copysign(std::expm1(std::abs(quantizedLogValue)), quantizedLogValue);
+
+    // Ensure the result is within [0, 255]
+    return std::max(0, std::min(quantizedValue, 255));
+}
+
 /** Utility function to read image data */
 unsigned char *readImageData(string imagePath, int width, int height, float scale, int quant, int mode) {
 
@@ -167,10 +196,10 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
   int currHeight;
   int currWidth;
   int round;
-  int bitIntervals = 1;
+  int numIntervals = 1;
   for (int i = 0; i < quant; i++)
-    bitIntervals *= 2; //2^quant
-  bitIntervals = 256 / bitIntervals; //round to the nearest
+    numIntervals *= 2; //2^quant
+  int bitIntervals = 256 / numIntervals; //round to the nearest
   std::set<int> values;
 
   for (int i = 0; i < newSize; i++) {
@@ -201,18 +230,20 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
     } else { //non-uniform
        if (scale < 1 && newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
         round = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
-        round = exp(floor(log(double(round))));
+        round = logQuant(round, mode, numIntervals);
+        if (values.find(round) == values.end())
+          values.insert(round);
         newR[i] = round;
         round = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
-        round = (round+(bitIntervals/2)) / bitIntervals * bitIntervals;
+        round = logQuant(round, mode, numIntervals);
         newG[i] = round;
         round = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
-        round = exp(floor(log(double(round))));
+        round = logQuant(round, mode, numIntervals);
         newB[i] = round;
       } else { //edge cases don't use filter
-        newR[i] = exp(floor(log(double((int)(unsigned char)Rbuf[newPlacement]))));
-        newG[i] = exp(floor(log(double((int)(unsigned char)Gbuf[newPlacement]))));
-        newB[i] = exp(floor(log(double((int)(unsigned char)Bbuf[newPlacement]))));
+        newR[i] = logQuant((int)(unsigned char)Rbuf[newPlacement], mode, numIntervals);
+        newG[i] = logQuant((int)(unsigned char)Gbuf[newPlacement], mode, numIntervals);
+        newB[i] = logQuant((int)(unsigned char)Bbuf[newPlacement], mode, numIntervals);
       }
     }
   }
