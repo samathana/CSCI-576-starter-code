@@ -137,17 +137,19 @@ int logQuant(int value, int pivot, int numIntervals) {
         return pivot;
     }
 
-    //normalize
+    //normalize, find index
     double logMin = logScale(0, pivot);
     double logMax = logScale(255, pivot);
-    double normalized = (logScale(value, pivot) - logMin) / (logMax - logMin) * (numIntervals - 1);
-    int quantizedIndex = normalized;
+    double intervalSize = (logMax - logMin) / numIntervals;
+    int intervalIndex = min((int) ((logScale(value, pivot) - logMin) / intervalSize), numIntervals - 1);
 
-    //map to range
-    double intervalSize = (logMax - logMin) / (numIntervals - 1);
-    double quantizedLogValue = logMin + quantizedIndex * intervalSize;
-    int quantizedValue = pivot + (quantizedLogValue >= 0 ? std::expm1(quantizedLogValue) : -std::expm1(-quantizedLogValue));
-    //make sure it's in range
+    //map to middle of interval
+    double quantizedLogValue = logMin + (intervalIndex + 0.5) * intervalSize;
+
+    //apply to original range
+    int quantizedValue = pivot + (quantizedLogValue >= 0 ? std::exp(quantizedLogValue) - 1 : -(std::exp(-quantizedLogValue) - 1));
+
+    //clamp
     return max(0, min(quantizedValue, 255));
 }
 
@@ -236,7 +238,10 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
         round = logQuant(round, mode, numIntervals);
         newB[i] = round;
       } else { //edge cases don't use filter
-        newR[i] = logQuant((int)(unsigned char)Rbuf[newPlacement], mode, numIntervals);
+        round = logQuant((int)(unsigned char)Rbuf[newPlacement], mode, numIntervals);
+        if (values.find(round) == values.end())
+          values.insert(round);
+        newR[i] = round;
         newG[i] = logQuant((int)(unsigned char)Gbuf[newPlacement], mode, numIntervals);
         newB[i] = logQuant((int)(unsigned char)Bbuf[newPlacement], mode, numIntervals);
       }
