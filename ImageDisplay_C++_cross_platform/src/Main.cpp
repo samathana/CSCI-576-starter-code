@@ -56,21 +56,26 @@ bool MyApp::OnInit() {
 
   // deal with command line arguments here
   cout << "Number of command line arguments: " << wxApp::argc << endl;
-  if (wxApp::argc != 5) {
+  if (wxApp::argc != 5 && wxApp::argc != 4) {
     cerr << "The executable should be invoked with exactly one filepath "
             "argument, Scale (0.0-1.0), Quantization (1-8), and Mode (-1-255). "
             "Example ./MyImageApplication '../../Lena_512_512.rgb'"
          << endl;
     exit(1);
   }
+  string imagePath = wxApp::argv[1].ToStdString();
   cout << "First argument: " << wxApp::argv[0] << endl;
   cout << "Second argument: " << wxApp::argv[1] << endl;
   cout << "Third argument: " << wxApp::argv[2] << endl;
   cout << "Fourth argument: " << wxApp::argv[3] << endl;
-  cout << "Fifth argument: " << wxApp::argv[4] << endl;
-  string imagePath = wxApp::argv[1].ToStdString();
 
-  MyFrame *frame = new MyFrame("Image Display", imagePath, stof((wxApp::argv[2]).ToStdString()), stoi((wxApp::argv[3]).ToStdString()), stoi((wxApp::argv[4]).ToStdString()));
+  MyFrame *frame;
+  if (wxApp::argc == 5) { //pivot provided
+    cout << "Fifth argument: " << wxApp::argv[4] << endl;
+    frame = new MyFrame("Image Display", imagePath, stof((wxApp::argv[2]).ToStdString()), stoi((wxApp::argv[3]).ToStdString()), stoi((wxApp::argv[4]).ToStdString()));
+  } else {
+    frame = new MyFrame("Image Display", imagePath, stof((wxApp::argv[2]).ToStdString()), stoi((wxApp::argv[3]).ToStdString()), -2);
+  } 
   frame->Show(true);
 
   // return true to continue, false to exit the application
@@ -181,6 +186,20 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
   inputFile.read(Bbuf.data(), width * height);
 
   inputFile.close();
+
+  /* find average value to calculate pivot, if none given */
+  if (mode == -2) {
+    long avg = 0;
+    for (int i = 0; i < width*height; i += 100) {
+      avg += Rbuf[i];
+      avg += Gbuf[i];
+      avg += Bbuf[i];
+    }
+    avg /= ((width*height)/5);
+    avg /= 3;
+    mode = avg;
+    cout << "Pivot calculated: " << mode << endl;
+  }
 
   /* scale down */
   int newSize = (int) (scale * (float) width * scale * (float) height);
