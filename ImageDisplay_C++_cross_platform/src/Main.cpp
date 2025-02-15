@@ -127,33 +127,28 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
   dc.DrawBitmap(inImageBitmap, 0, 0, false);
 }
 
+int logScale(int val, int pivot) {
+  int ret = log(1 + abs(val - pivot));
+  return (val < pivot ? ret * -1 : ret); //which side of pivot?
+}
+
 int logQuant(int value, int pivot, int numIntervals) {
     if (value == pivot) { //avoid log(0)
         return pivot;
     }
 
-    // Logarithmic scaling function
-    auto logScale = [](int x, int pivot) {
-        return std::copysign(std::log1p(std::abs(x - pivot)), x - pivot);
-    };
-
-    // Normalize the logarithmic function to [0, numIntervals - 1]
+    //normalize
     double logMin = logScale(0, pivot);
     double logMax = logScale(255, pivot);
     double normalized = (logScale(value, pivot) - logMin) / (logMax - logMin) * (numIntervals - 1);
+    int quantizedIndex = normalized;
 
-    // Quantize to the nearest interval
-    int quantizedIndex = static_cast<int>(std::round(normalized));
-
-    // Map the quantized index back to the original range
+    //map to range
     double intervalSize = (logMax - logMin) / (numIntervals - 1);
     double quantizedLogValue = logMin + quantizedIndex * intervalSize;
-
-    // Inverse of the logarithmic function to get the quantized value
-    int quantizedValue = pivot + std::copysign(std::expm1(std::abs(quantizedLogValue)), quantizedLogValue);
-
-    // Ensure the result is within [0, 255]
-    return std::max(0, std::min(quantizedValue, 255));
+    int quantizedValue = pivot + (quantizedLogValue >= 0 ? std::expm1(quantizedLogValue) : -std::expm1(-quantizedLogValue));
+    //make sure it's in range
+    return max(0, min(quantizedValue, 255));
 }
 
 /** Utility function to read image data */
