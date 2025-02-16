@@ -132,27 +132,29 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
   dc.DrawBitmap(inImageBitmap, 0, 0, false);
 }
 
-int logScale(int val, int pivot) {
-  int ret = log(1 + abs(val - pivot));
-  return (val < pivot ? ret * -1 : ret); //which side of pivot?
+int logScale(int val, int pivot, float base) { 
+  double distance = abs(val - pivot);
+  double scaledDistance = log(1 + distance) / log(base);
+  return (val < pivot ? -scaledDistance : scaledDistance); //which side of pivot?
 }
 
-int logQuant(int value, int pivot, int numIntervals) {
+int logQuant(int value, int pivot, int numIntervals, float base = 2.0) { //adjustable base for logarithmic scaling
     if (value == pivot) { //avoid log(0)
         return pivot;
     }
 
     //normalize, find index
-    double logMin = logScale(0, pivot);
-    double logMax = logScale(255, pivot);
+    double logMin = logScale(0, pivot, base);
+    double logMax = logScale(255, pivot, base);
     double intervalSize = (logMax - logMin) / numIntervals;
-    int intervalIndex = min((int) ((logScale(value, pivot) - logMin) / intervalSize), numIntervals - 1);
+    int intervalIndex = min((int) ((logScale(value, pivot, base) - logMin) / intervalSize), numIntervals - 1);
 
     //map to middle of interval
     double quantizedLogValue = logMin + (intervalIndex + 0.5) * intervalSize;
 
     //apply to original range
-    int quantizedValue = pivot + (quantizedLogValue >= 0 ? std::exp(quantizedLogValue) - 1 : -(std::exp(-quantizedLogValue) - 1));
+    double distance = quantizedLogValue >= 0 ? pow(base, quantizedLogValue) - 1 : -(pow(base, -quantizedLogValue) - 1);
+    int quantizedValue = pivot + distance;
 
     //clamp
     return max(0, min(quantizedValue, 255));
