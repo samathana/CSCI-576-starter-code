@@ -207,7 +207,6 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
   vector<char> newG(newSize);
   vector<char> newB(newSize);
 
-  int newPlacement;
   float reverseScale = 1/scale;
   int currHeight;
   int currWidth;
@@ -219,50 +218,51 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
   std::set<int> values;
 
   for (int i = 0; i < newSize; i++) {
-    currHeight = i / (height * scale);
+    currHeight = i / (int)(height * scale);
     currWidth = i % (int) (width * scale);
-    newPlacement = currHeight * reverseScale * width + (currWidth * reverseScale); //corresponding pixel in original
+    int x = ((float) currWidth * reverseScale);
+    int y = ((float) currHeight * reverseScale);
     if (mode == -1) { //uniform
-      if (scale < 1 && newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
-        round = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
+      if (scale < 1 && x-1 >= 0 && x+1 < width && y+1 < height && y-1 >= 0) {
+        round = (int)(unsigned char)Rbuf[y*width + x]/9 + (int)(unsigned char)Rbuf[y*width + x-1]/9 + (int)(unsigned char)Rbuf[y*width + x+1]/9 + (int)(unsigned char)Rbuf[y*width + x + width]/9 + (int)(unsigned char)Rbuf[y*width + x-1 + width]/9 + (int)(unsigned char)Rbuf[y*width + x+1 + width]/9 + (int)(unsigned char)Rbuf[y*width + x - width]/9 + (int)(unsigned char)Rbuf[y*width + x-1 - width]/9 + (int)(unsigned char)Rbuf[y*width + x+1 - width]/9;
         round = round / bitIntervals * bitIntervals; //round to the nearest value
         newR[i] = round + (bitIntervals / 2);
         if (values.find(round + (bitIntervals / 2)) == values.end())
           values.insert(round + (bitIntervals / 2));
-        round = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
+        round = (int)(unsigned char)Gbuf[y*width + x]/9 + (int)(unsigned char)Gbuf[y*width + x-1]/9 + (int)(unsigned char)Gbuf[y*width + x+1]/9 + (int)(unsigned char)Gbuf[y*width + x + width]/9 + (int)(unsigned char)Gbuf[y*width + x-1 + width]/9 + (int)(unsigned char)Gbuf[y*width + x+1 + width]/9 + (int)(unsigned char)Gbuf[y*width + x - width]/9 + (int)(unsigned char)Gbuf[y*width + x-1 - width]/9 + (int)(unsigned char)Gbuf[y*width + x+1 - width]/9;
         round = round / bitIntervals * bitIntervals;
         newG[i] = round + (bitIntervals / 2);
-        round = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
+        round = (int)(unsigned char)Bbuf[y*width + x]/9 + (int)(unsigned char)Bbuf[y*width + x-1]/9 + (int)(unsigned char)Bbuf[y*width + x+1]/9 + (int)(unsigned char)Bbuf[y*width + x + width]/9 + (int)(unsigned char)Bbuf[y*width + x-1 + width]/9 + (int)(unsigned char)Bbuf[y*width + x+1 + width]/9 + (int)(unsigned char)Bbuf[y*width + x - width]/9 + (int)(unsigned char)Bbuf[y*width + x-1 - width]/9 + (int)(unsigned char)Bbuf[y*width + x+1 - width]/9;
         round = round / bitIntervals * bitIntervals;
         newB[i] = round + (bitIntervals / 2);
       } else { //edge cases don't use filter, scale 1 doesn't use filter
-        round = (int)(unsigned char)Rbuf[newPlacement] / bitIntervals * bitIntervals + (bitIntervals / 2);
+        round = (int)(unsigned char)Rbuf[y*width + x] / bitIntervals * bitIntervals + (bitIntervals / 2);
         if (values.find(round) == values.end()) //for printing
           values.insert(round);
         newR[i] = round;
-        newG[i] = (int)(unsigned char)Gbuf[newPlacement] / bitIntervals * bitIntervals + (bitIntervals / 2);
-        newB[i] = (int)(unsigned char)Bbuf[newPlacement] / bitIntervals * bitIntervals + (bitIntervals / 2);
+        newG[i] = (int)(unsigned char)Gbuf[y*width + x] / bitIntervals * bitIntervals + (bitIntervals / 2);
+        newB[i] = (int)(unsigned char)Bbuf[y*width + x] / bitIntervals * bitIntervals + (bitIntervals / 2);
       }
     } else { //non-uniform
-       if (scale < 1 && newPlacement-width-1 >= 0 && newPlacement+width+1 < width*height) {
-        round = (int)(unsigned char)Rbuf[newPlacement]/9 + (int)(unsigned char)Rbuf[newPlacement-1]/9 + (int)(unsigned char)Rbuf[newPlacement+1]/9 + (int)(unsigned char)Rbuf[newPlacement + width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Rbuf[newPlacement - width]/9 + (int)(unsigned char)Rbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Rbuf[newPlacement+1 - width]/9;
+       if (scale < 1 && y*width + x-width-1 >= 0 && y*width + x+width+1 < width*height) {
+        round = (int)(unsigned char)Rbuf[y*width + x]/9 + (int)(unsigned char)Rbuf[y*width + x-1]/9 + (int)(unsigned char)Rbuf[y*width + x+1]/9 + (int)(unsigned char)Rbuf[y*width + x + width]/9 + (int)(unsigned char)Rbuf[y*width + x-1 + width]/9 + (int)(unsigned char)Rbuf[y*width + x+1 + width]/9 + (int)(unsigned char)Rbuf[y*width + x - width]/9 + (int)(unsigned char)Rbuf[y*width + x-1 - width]/9 + (int)(unsigned char)Rbuf[y*width + x+1 - width]/9;
         round = logQuant(round, mode, numIntervals);
         if (values.find(round) == values.end())
           values.insert(round);
         newR[i] = round;
-        round = (int)(unsigned char)Gbuf[newPlacement]/9 + (int)(unsigned char)Gbuf[newPlacement-1]/9 + (int)(unsigned char)Gbuf[newPlacement+1]/9 + (int)(unsigned char)Gbuf[newPlacement + width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Gbuf[newPlacement - width]/9 + (int)(unsigned char)Gbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Gbuf[newPlacement+1 - width]/9;
+        round = (int)(unsigned char)Gbuf[y*width + x]/9 + (int)(unsigned char)Gbuf[y*width + x-1]/9 + (int)(unsigned char)Gbuf[y*width + x+1]/9 + (int)(unsigned char)Gbuf[y*width + x + width]/9 + (int)(unsigned char)Gbuf[y*width + x-1 + width]/9 + (int)(unsigned char)Gbuf[y*width + x+1 + width]/9 + (int)(unsigned char)Gbuf[y*width + x - width]/9 + (int)(unsigned char)Gbuf[y*width + x-1 - width]/9 + (int)(unsigned char)Gbuf[y*width + x+1 - width]/9;
         round = logQuant(round, mode, numIntervals);
         newG[i] = round;
-        round = (int)(unsigned char)Bbuf[newPlacement]/9 + (int)(unsigned char)Bbuf[newPlacement-1]/9 + (int)(unsigned char)Bbuf[newPlacement+1]/9 + (int)(unsigned char)Bbuf[newPlacement + width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 + width]/9 + (int)(unsigned char)Bbuf[newPlacement - width]/9 + (int)(unsigned char)Bbuf[newPlacement-1 - width]/9 + (int)(unsigned char)Bbuf[newPlacement+1 - width]/9;
+        round = (int)(unsigned char)Bbuf[y*width + x]/9 + (int)(unsigned char)Bbuf[y*width + x-1]/9 + (int)(unsigned char)Bbuf[y*width + x+1]/9 + (int)(unsigned char)Bbuf[y*width + x + width]/9 + (int)(unsigned char)Bbuf[y*width + x-1 + width]/9 + (int)(unsigned char)Bbuf[y*width + x+1 + width]/9 + (int)(unsigned char)Bbuf[y*width + x - width]/9 + (int)(unsigned char)Bbuf[y*width + x-1 - width]/9 + (int)(unsigned char)Bbuf[y*width + x+1 - width]/9;
         round = logQuant(round, mode, numIntervals);
         newB[i] = round;
       } else { //edge cases don't use filter
-        round = logQuant((int)(unsigned char)Rbuf[newPlacement], mode, numIntervals);
+        round = logQuant((int)(unsigned char)Rbuf[y*width + x], mode, numIntervals);
         if (values.find(round) == values.end())
           values.insert(round);
         newR[i] = round;
-        newG[i] = logQuant((int)(unsigned char)Gbuf[newPlacement], mode, numIntervals);
-        newB[i] = logQuant((int)(unsigned char)Bbuf[newPlacement], mode, numIntervals);
+        newG[i] = logQuant((int)(unsigned char)Gbuf[y*width + x], mode, numIntervals);
+        newB[i] = logQuant((int)(unsigned char)Bbuf[y*width + x], mode, numIntervals);
       }
     }
   }
