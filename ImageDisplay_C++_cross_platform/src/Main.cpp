@@ -191,12 +191,16 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
 
   /* find 50th percentile to calculate pivot, if none given */
   if (mode == -2) {
-    vector<char> sortedValues = Rbuf;
-    sort(sortedValues.begin(), sortedValues.end());
+    if (quant < 8) { //no pivot or log scale for 8
+      vector<char> sortedValues = Rbuf;
+      sort(sortedValues.begin(), sortedValues.end());
 
-    int index = 0.5 * (sortedValues.size() - 1);
-    mode = (int)(unsigned char)sortedValues[index];
-    cout << "Pivot calculated: " << mode << endl;
+      int index = 0.5 * (sortedValues.size() - 1);
+      mode = (int)(unsigned char)sortedValues[index];
+      cout << "Pivot calculated: " << mode << endl;
+    } else {
+      mode = -1;
+    }
   }
 
   /* scale down */
