@@ -189,17 +189,13 @@ unsigned char *readImageData(string imagePath, int width, int height, float scal
 
   inputFile.close();
 
-  /* find average value to calculate pivot, if none given */
+  /* find 50th percentile to calculate pivot, if none given */
   if (mode == -2) {
-    long avg = 0;
-    for (int i = 0; i < width*height; i += 100) {
-      avg += Rbuf[i];
-      avg += Gbuf[i];
-      avg += Bbuf[i];
-    }
-    avg /= ((width*height)/5);
-    avg /= 3;
-    mode = avg;
+    vector<char> sortedValues = Rbuf;
+    sort(sortedValues.begin(), sortedValues.end());
+
+    int index = 0.5 * (sortedValues.size() - 1);
+    mode = (int)(unsigned char)sortedValues[index];
     cout << "Pivot calculated: " << mode << endl;
   }
 
