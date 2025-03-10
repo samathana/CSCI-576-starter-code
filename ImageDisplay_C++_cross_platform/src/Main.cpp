@@ -152,12 +152,33 @@ unsigned char *readImageData(string imagePath, int width, int height) {
 
   inputFile.close();
 
-  for (int i = 0; i < width * height; i++) {
-    newR[i] = 0;
-    newG[i] = Gbuf[i];
-    newB[i] = 0;
+  int n = 16;
+  int sqrtN = sqrt(n);
+  int intervalSize = 256/sqrtN;
+  vector<pair<int, int>> codebook;
+  for (int i = 0; i < sqrtN; i++) {
+    for (int j = 0; j < sqrtN; j++) {
+      codebook.push_back(make_pair(i * intervalSize + (intervalSize / 2), j * intervalSize + (intervalSize / 2)));
+    }
   }
 
+  int firstVal;
+  int secondVal;
+  for (int i = 0; i < width * height - 1; i += 2) {
+    firstVal = round(static_cast<float>((unsigned char) Rbuf[i]) / intervalSize) - 1;
+    secondVal = round(static_cast<float>((unsigned char) Rbuf[i + 1]) / intervalSize) - 1;
+    newR[i] = codebook[firstVal * sqrtN + secondVal].first;
+    newR[i + 1] = codebook[firstVal * sqrtN + secondVal].second;
+    firstVal = round(static_cast<float>((unsigned char) Gbuf[i]) / intervalSize) - 1;
+    secondVal = round(static_cast<float>((unsigned char) Gbuf[i + 1]) / intervalSize) - 1;
+    newG[i] = codebook[firstVal * sqrtN + secondVal].first;
+    newG[i + 1] = codebook[firstVal * sqrtN + secondVal].second;    
+    firstVal = round(static_cast<float>((unsigned char) Bbuf[i]) / intervalSize) - 1;
+    secondVal = round(static_cast<float>((unsigned char) Bbuf[i + 1]) / intervalSize) - 1;
+    newB[i] = codebook[firstVal * sqrtN + secondVal].first;
+    newB[i + 1] = codebook[firstVal * sqrtN + secondVal].second;
+  }
+  
   /**
    * Allocate a buffer to store the pixel values
    * The data must be allocated with malloc(), NOT with operator new. wxWidgets
