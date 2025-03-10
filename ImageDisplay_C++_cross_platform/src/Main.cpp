@@ -56,8 +56,8 @@ bool MyApp::OnInit() {
   // deal with command line arguments here
   cout << "Number of command line arguments: " << wxApp::argc << endl;
   if (wxApp::argc != 2) {
-    cerr << "The executable should be invoked with exactly one filepath "
-            "argument. Example ./MyImageApplication '../../Lena_512_512.rgb'"
+    cerr << "The executable should be invoked with exactly three filepath "
+            "arguments. Example ./MyImageApplication '../../Lena_512_512.rgb 2 4'"
          << endl;
     exit(1);
   }
@@ -81,8 +81,8 @@ MyFrame::MyFrame(const wxString &title, string imagePath)
 
   // Modify the height and width values here to read and display an image with
   // different dimensions.    
-  width = 512;
-  height = 512;
+  width = 352;
+  height = 288;
 
   unsigned char *inData = readImageData(imagePath, width, height);
 
@@ -90,18 +90,18 @@ MyFrame::MyFrame(const wxString &title, string imagePath)
   // pointer to the data is owned by the wxImage object, which will be
   // responsible for deleting it. So this means that you should not delete the
   // data yourself.
-  inImage.SetData(inData, width, height, false);
+  inImage.SetData(inData, 2 * width, height, false);
 
   // Set up the scrolled window as a child of this frame
   scrolledWindow = new wxScrolledWindow(this, wxID_ANY);
-  scrolledWindow->SetScrollbars(10, 10, width, height);
-  scrolledWindow->SetVirtualSize(width, height);
+  scrolledWindow->SetScrollbars(10, 10, 2 * width, height);
+  scrolledWindow->SetVirtualSize(2 * width, height);
 
   // Bind the paint event to the OnPaint function of the scrolled window
   scrolledWindow->Bind(wxEVT_PAINT, &MyFrame::OnPaint, this);
 
   // Set the frame size
-  SetClientSize(width, height);
+  SetClientSize(width * 2, height);
 
   // Set the frame background color
   SetBackgroundColour(*wxBLACK);
@@ -135,6 +135,10 @@ unsigned char *readImageData(string imagePath, int width, int height) {
   vector<char> Gbuf(width * height);
   vector<char> Bbuf(width * height);
 
+  vector<char> newR(width * height);
+  vector<char> newG(width * height);
+  vector<char> newB(width * height);
+
   /**
    * The input RGB file is formatted as RRRR.....GGGG....BBBB.
    * i.e the R values of all the pixels followed by the G values
@@ -148,20 +152,36 @@ unsigned char *readImageData(string imagePath, int width, int height) {
 
   inputFile.close();
 
+  for (int i = 0; i < width * height; i++) {
+    newR[i] = 0;
+    newG[i] = Gbuf[i];
+    newB[i] = 0;
+  }
+
   /**
    * Allocate a buffer to store the pixel values
    * The data must be allocated with malloc(), NOT with operator new. wxWidgets
    * library requires this.
    */
+  int newWidth = width * 2;
   unsigned char *inData =
-      (unsigned char *)malloc(width * height * 3 * sizeof(unsigned char));
+      (unsigned char *)malloc(newWidth * height * 3 * sizeof(unsigned char));
       
-  for (int i = 0; i < height * width; i++) {
-    // We populate RGB values of each pixel in that order
-    // RGB.RGB.RGB and so on for all pixels
-    inData[3 * i] = Rbuf[i];
-    inData[3 * i + 1] = Gbuf[i];
-    inData[3 * i + 2] = Bbuf[i];
+  for (int j = 0; j < height; j++) {
+    for (int i = 0; i < width; i++) {
+      // We populate RGB values of each pixel in that order
+      // RGB.RGB.RGB and so on for all pixels
+      inData[3 * (i + j * newWidth)] = Rbuf[i + j * width];
+      inData[3 * (i + j * newWidth) + 1] = Gbuf[i + j * width];
+      inData[3 * (i + j * newWidth) + 2] = Bbuf[i + j * width];
+    }
+    for (int i = width; i < width * 2; i++) {
+      // We populate RGB values of each pixel in that order
+      // RGB.RGB.RGB and so on for all pixels
+      inData[3 * (i + j * newWidth)] = newR[i + j * width];
+      inData[3 * (i + j * newWidth) + 1] = newG[i + j * width];
+      inData[3 * (i + j * newWidth) + 2] = newB[i + j * width];
+    }
   }
 
   return inData;
