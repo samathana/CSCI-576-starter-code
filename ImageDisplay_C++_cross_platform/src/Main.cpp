@@ -119,6 +119,19 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
   dc.DrawBitmap(inImageBitmap, 0, 0, false);
 }
 
+int findClosest(int x, int y, vector<pair<int, int>>& codebook) {
+  int minDistance = 255;
+  int nearestIndex = 0;
+  for (int j = 0; j < codebook.size(); j++) { //find closest cluster to map to
+    double distance = sqrt(pow(x - codebook[j].first, 2) + pow(y - codebook[j].second, 2));
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = j;
+    }
+  }
+  return nearestIndex;
+}
+
 /** Utility function to read image data */
 unsigned char *readImageData(string imagePath, int width, int height) {
 
@@ -156,28 +169,45 @@ unsigned char *readImageData(string imagePath, int width, int height) {
   int sqrtN = sqrt(n);
   int intervalSize = 256/sqrtN;
   vector<pair<int, int>> codebook;
+  vector<pair<int, int>> sumVecs(n, make_pair(0, 0)); //sum of vectors in entry
+  vector<int> numVecs(codebook.size(), 0); //num vectors, initialized to 0
   for (int i = 0; i < sqrtN; i++) {
-    for (int j = 0; j < sqrtN; j++) {
-      codebook.push_back(make_pair(i * intervalSize + (intervalSize / 2), j * intervalSize + (intervalSize / 2)));
+    for (int j = 0; j < sqrtN; j++) { //initial, uniform codebook
+      codebook.push_back({i * intervalSize + (intervalSize / 2), j * intervalSize + (intervalSize / 2)});
+    }
+  }
+  //codebook refinement:
+  for (int j = 0; j < 10; j++) { //repeat 10 times
+    sumVecs = vector<pair<int, int>>(codebook.size(), make_pair(0, 0)); //sum of inputs in an entry
+    numVecs = vector<int>(codebook.size(), 0); //num inputs mapped to entry
+    for (int i = 0; i < width * height - 1; i += 2) { //for every input:
+      int x = (unsigned char) Rbuf[i];
+      int y = (unsigned char) Rbuf[i + 1];
+      int nearestIndex = 0;
+      nearestIndex = findClosest(x, y, codebook);
+      sumVecs[nearestIndex].first += x;
+      sumVecs[nearestIndex].second += y;
+      numVecs[nearestIndex]++;
+    }
+    for (int i = 0; i < codebook.size(); i++) { //set to new values
+      if (numVecs[i] > 0) {
+        codebook[i].first = sumVecs[i].first / numVecs[i];
+        codebook[i].second = sumVecs[i].second / numVecs[i];
+      }
     }
   }
 
-  int firstVal;
-  int secondVal;
+  int closestIndex;
   for (int i = 0; i < width * height - 1; i += 2) {
-    firstVal = clamp((int) round(static_cast<float>((unsigned char) Rbuf[i]) / intervalSize) - 1, 0, sqrtN - 1);
-    secondVal = clamp((int) round(static_cast<float>((unsigned char) Rbuf[i + 1]) / intervalSize) - 1, 0, sqrtN - 1);
-    //cout << (int) (unsigned char) Rbuf[i] << " " << (int) (unsigned char) Rbuf[i + 1] << ":" << firstVal << " " << secondVal << endl;
-    newR[i] = codebook[firstVal * sqrtN + secondVal].first;
-    newR[i + 1] = codebook[firstVal * sqrtN + secondVal].second;
-    firstVal = clamp((int) round(static_cast<float>((unsigned char) Gbuf[i]) / intervalSize) - 1, 0, sqrtN - 1);
-    secondVal = clamp((int) round(static_cast<float>((unsigned char) Gbuf[i + 1]) / intervalSize) - 1, 0, sqrtN - 1);
-    newG[i] = codebook[firstVal * sqrtN + secondVal].first;
-    newG[i + 1] = codebook[firstVal * sqrtN + secondVal].second;    
-    firstVal = clamp((int) round(static_cast<float>((unsigned char) Bbuf[i]) / intervalSize) - 1, 0, sqrtN - 1);
-    secondVal = clamp((int) round(static_cast<float>((unsigned char) Bbuf[i + 1]) / intervalSize) - 1, 0, sqrtN - 1);
-    newB[i] = codebook[firstVal * sqrtN + secondVal].first;
-    newB[i + 1] = codebook[firstVal * sqrtN + secondVal].second;
+    closestIndex = findClosest((int) (unsigned char) Rbuf[i], (int) (unsigned char) Rbuf[i + 1], codebook);
+    newR[i] = codebook[closestIndex].first;
+    newR[i + 1] = codebook[closestIndex].second;
+    closestIndex = findClosest((int) (unsigned char) Gbuf[i], (int) (unsigned char) Gbuf[i + 1], codebook);
+    newG[i] = codebook[closestIndex].first;
+    newG[i + 1] = codebook[closestIndex].second;
+    closestIndex = findClosest((int) (unsigned char) Bbuf[i], (int) (unsigned char) Bbuf[i + 1], codebook);
+    newB[i] = codebook[closestIndex].first;
+    newB[i + 1] = codebook[closestIndex].second;
   }
   
   /**
