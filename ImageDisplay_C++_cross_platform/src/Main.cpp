@@ -91,8 +91,8 @@ MyFrame::MyFrame(const wxString &title, string imagePath, float s, int q, int m)
 
   // Modify the height and width values here to read and display an image with
   // different dimensions.    
-  width = 512;
-  height = 512;
+  width = 352;
+  height = 288;
 
   unsigned char *inData = readImageData(imagePath, width, height, s, q, m);
   
