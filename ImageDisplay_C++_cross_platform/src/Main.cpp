@@ -152,7 +152,7 @@ unsigned char *readImageData(string imagePath, int width, int height) {
 
   inputFile.close();
 
-  int n = 16;
+  int n = 4;
   int sqrtN = sqrt(n);
   int intervalSize = 256/sqrtN;
   vector<pair<int, int>> codebook;
@@ -165,16 +165,17 @@ unsigned char *readImageData(string imagePath, int width, int height) {
   int firstVal;
   int secondVal;
   for (int i = 0; i < width * height - 1; i += 2) {
-    firstVal = round(static_cast<float>((unsigned char) Rbuf[i]) / intervalSize) - 1;
-    secondVal = round(static_cast<float>((unsigned char) Rbuf[i + 1]) / intervalSize) - 1;
+    firstVal = clamp((int) round(static_cast<float>((unsigned char) Rbuf[i]) / intervalSize) - 1, 0, sqrtN - 1);
+    secondVal = clamp((int) round(static_cast<float>((unsigned char) Rbuf[i + 1]) / intervalSize) - 1, 0, sqrtN - 1);
+    //cout << (int) (unsigned char) Rbuf[i] << " " << (int) (unsigned char) Rbuf[i + 1] << ":" << firstVal << " " << secondVal << endl;
     newR[i] = codebook[firstVal * sqrtN + secondVal].first;
     newR[i + 1] = codebook[firstVal * sqrtN + secondVal].second;
-    firstVal = round(static_cast<float>((unsigned char) Gbuf[i]) / intervalSize) - 1;
-    secondVal = round(static_cast<float>((unsigned char) Gbuf[i + 1]) / intervalSize) - 1;
+    firstVal = clamp((int) round(static_cast<float>((unsigned char) Gbuf[i]) / intervalSize) - 1, 0, sqrtN - 1);
+    secondVal = clamp((int) round(static_cast<float>((unsigned char) Gbuf[i + 1]) / intervalSize) - 1, 0, sqrtN - 1);
     newG[i] = codebook[firstVal * sqrtN + secondVal].first;
     newG[i + 1] = codebook[firstVal * sqrtN + secondVal].second;    
-    firstVal = round(static_cast<float>((unsigned char) Bbuf[i]) / intervalSize) - 1;
-    secondVal = round(static_cast<float>((unsigned char) Bbuf[i + 1]) / intervalSize) - 1;
+    firstVal = clamp((int) round(static_cast<float>((unsigned char) Bbuf[i]) / intervalSize) - 1, 0, sqrtN - 1);
+    secondVal = clamp((int) round(static_cast<float>((unsigned char) Bbuf[i + 1]) / intervalSize) - 1, 0, sqrtN - 1);
     newB[i] = codebook[firstVal * sqrtN + secondVal].first;
     newB[i + 1] = codebook[firstVal * sqrtN + secondVal].second;
   }
@@ -197,8 +198,7 @@ unsigned char *readImageData(string imagePath, int width, int height) {
       inData[3 * (i + j * newWidth) + 2] = Bbuf[i + j * width];
     }
     for (int i = width; i < width * 2; i++) {
-      // We populate RGB values of each pixel in that order
-      // RGB.RGB.RGB and so on for all pixels
+      // side by side
       inData[3 * (i + j * newWidth)] = newR[i + j * width];
       inData[3 * (i + j * newWidth) + 1] = newG[i + j * width];
       inData[3 * (i + j * newWidth) + 2] = newB[i + j * width];
