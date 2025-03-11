@@ -145,6 +145,10 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
     exit(1);
   }
 
+  bool color = true;
+  if (imagePath.find(".raw") != std::string::npos)
+    color = false;
+
   // Create and populate RGB buffers
   vector<char> Rbuf(width * height);
   vector<char> Gbuf(width * height);
@@ -203,12 +207,19 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
     closestIndex = findClosest((int) (unsigned char) Rbuf[i], (int) (unsigned char) Rbuf[i + 1], codebook);
     newR[i] = codebook[closestIndex].first;
     newR[i + 1] = codebook[closestIndex].second;
-    closestIndex = findClosest((int) (unsigned char) Gbuf[i], (int) (unsigned char) Gbuf[i + 1], codebook);
-    newG[i] = codebook[closestIndex].first;
-    newG[i + 1] = codebook[closestIndex].second;
-    closestIndex = findClosest((int) (unsigned char) Bbuf[i], (int) (unsigned char) Bbuf[i + 1], codebook);
-    newB[i] = codebook[closestIndex].first;
-    newB[i + 1] = codebook[closestIndex].second;
+    if (color) {
+      closestIndex = findClosest((int) (unsigned char) Gbuf[i], (int) (unsigned char) Gbuf[i + 1], codebook);
+      newG[i] = codebook[closestIndex].first;
+      newG[i + 1] = codebook[closestIndex].second;
+      closestIndex = findClosest((int) (unsigned char) Bbuf[i], (int) (unsigned char) Bbuf[i + 1], codebook);
+      newB[i] = codebook[closestIndex].first;
+      newB[i + 1] = codebook[closestIndex].second;
+    } else { //grayscale
+      newG[i] = newR[i];
+      newB[i] = newR[i];
+      newG[i + 1] = newR[i + 1];
+      newB[i + 1] = newR[i + 1];
+    }
   }
   
   /**
@@ -225,8 +236,13 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
       // We populate RGB values of each pixel in that order
       // RGB.RGB.RGB and so on for all pixels
       inData[3 * (i + j * newWidth)] = Rbuf[i + j * width];
-      inData[3 * (i + j * newWidth) + 1] = Gbuf[i + j * width];
-      inData[3 * (i + j * newWidth) + 2] = Bbuf[i + j * width];
+      if (color) {
+        inData[3 * (i + j * newWidth) + 1] = Gbuf[i + j * width];
+        inData[3 * (i + j * newWidth) + 2] = Bbuf[i + j * width];
+      } else {
+        inData[3 * (i + j * newWidth) + 1] = Rbuf[i + j * width];
+        inData[3 * (i + j * newWidth) + 2] = Rbuf[i + j * width];
+      }
     }
     for (int i = width; i < width * 2; i++) {
       // side by side
