@@ -30,7 +30,7 @@ class MyApp : public wxApp {
  */
 class MyFrame : public wxFrame {
  public:
-  MyFrame(const wxString &title, string imagePath);
+  MyFrame(const wxString &title, string imagePath, int m, int n);
 
  private:
   void OnPaint(wxPaintEvent &event);
@@ -41,7 +41,7 @@ class MyFrame : public wxFrame {
 };
 
 /** Utility function to read image data */
-unsigned char *readImageData(string imagePath, int width, int height);
+unsigned char *readImageData(string imagePath, int width, int height, int m, int n);
 
 /** Definitions */
 
@@ -55,17 +55,19 @@ bool MyApp::OnInit() {
 
   // deal with command line arguments here
   cout << "Number of command line arguments: " << wxApp::argc << endl;
-  if (wxApp::argc != 2) {
-    cerr << "The executable should be invoked with exactly three filepath "
+  if (wxApp::argc != 4) {
+    cerr << "The executable should be invoked with exactly three "
             "arguments. Example ./MyImageApplication '../../Lena_512_512.rgb 2 4'"
          << endl;
     exit(1);
   }
   cout << "First argument: " << wxApp::argv[0] << endl;
   cout << "Second argument: " << wxApp::argv[1] << endl;
+  cout << "Third argument: " << wxApp::argv[2] << endl;
+  cout << "Fourth argument: " << wxApp::argv[3] << endl;
   string imagePath = wxApp::argv[1].ToStdString();
 
-  MyFrame *frame = new MyFrame("Image Display", imagePath);
+  MyFrame *frame = new MyFrame("Image Display", imagePath, stoi((wxApp::argv[2]).ToStdString()), stoi((wxApp::argv[3]).ToStdString()));
   frame->Show(true);
 
   // return true to continue, false to exit the application
@@ -76,7 +78,7 @@ bool MyApp::OnInit() {
  * Constructor for the MyFrame class.
  * Here we read the pixel data from the file and set up the scrollable window.
  */
-MyFrame::MyFrame(const wxString &title, string imagePath)
+MyFrame::MyFrame(const wxString &title, string imagePath, int m, int n)
     : wxFrame(NULL, wxID_ANY, title) {
 
   // Modify the height and width values here to read and display an image with
@@ -84,7 +86,7 @@ MyFrame::MyFrame(const wxString &title, string imagePath)
   width = 352;
   height = 288;
 
-  unsigned char *inData = readImageData(imagePath, width, height);
+  unsigned char *inData = readImageData(imagePath, width, height, m, n);
 
   // the last argument is static_data, if it is false, after this call the
   // pointer to the data is owned by the wxImage object, which will be
@@ -133,7 +135,7 @@ int findClosest(int x, int y, vector<pair<int, int>>& codebook) {
 }
 
 /** Utility function to read image data */
-unsigned char *readImageData(string imagePath, int width, int height) {
+unsigned char *readImageData(string imagePath, int width, int height, int m, int n) {
 
   // Open the file in binary mode
   ifstream inputFile(imagePath, ios::binary);
@@ -165,7 +167,6 @@ unsigned char *readImageData(string imagePath, int width, int height) {
 
   inputFile.close();
 
-  int n = 4;
   int sqrtN = sqrt(n);
   int intervalSize = 256/sqrtN;
   vector<pair<int, int>> codebook;
