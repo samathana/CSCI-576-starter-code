@@ -134,6 +134,24 @@ int findClosest(int x, int y, vector<pair<int, int>>& codebook) {
   return nearestIndex;
 }
 
+int findClosestCombined(int r1, int r2, int g1, int g2, int b1, int b2, vector<pair<int, int>>& codebook, bool color) {
+  int minDistance = 255;
+  int nearestIndex = 0;
+  for (int j = 0; j < codebook.size(); j++) { //find closest cluster to map to
+    double distance = sqrt(pow(r1 - codebook[j].first, 2) + pow(r2 - codebook[j].second, 2));
+    if (color) {
+      double dg = sqrt(pow(g1 - codebook[j].first, 2) + pow(g2 - codebook[j].second, 2));
+      double db = sqrt(pow(b1 - codebook[j].first, 2) + pow(b2 - codebook[j].second, 2));
+      distance += dg + db;
+    }
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = j;
+    }
+  }
+  return nearestIndex;
+}
+
 /** Utility function to read image data */
 unsigned char *readImageData(string imagePath, int width, int height, int m, int n) {
 
@@ -182,17 +200,26 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
     }
   }
   //codebook refinement:
-  for (int j = 0; j < 10; j++) { //repeat 10 times
+  for (int j = 0; j < 30; j++) { //repeat 10 times
     sumVecs = vector<pair<int, int>>(codebook.size(), make_pair(0, 0)); //sum of inputs in an entry
     numVecs = vector<int>(codebook.size(), 0); //num inputs mapped to entry
     for (int i = 0; i < width * height - 1; i += 2) { //for every input:
-      int x = (unsigned char) Rbuf[i];
-      int y = (unsigned char) Rbuf[i + 1];
-      int nearestIndex = 0;
-      nearestIndex = findClosest(x, y, codebook);
-      sumVecs[nearestIndex].first += x;
-      sumVecs[nearestIndex].second += y;
-      numVecs[nearestIndex]++;
+      int r1 = (unsigned char) Rbuf[i];
+      int r2 = (unsigned char) Rbuf[i + 1];
+      int g1 = (unsigned char) Gbuf[i];
+      int g2 = (unsigned char) Gbuf[i + 1];
+      int b1 = (unsigned char) Bbuf[i];
+      int b2 = (unsigned char) Bbuf[i + 1];
+      int nearestIndex = findClosestCombined(r1, r2, g1, g2, b1, b2, codebook, color);
+      if (color) {
+        sumVecs[nearestIndex].first += r1 + g1 + b1;
+        sumVecs[nearestIndex].second += r2 + g1 + b2;
+        numVecs[nearestIndex] += 3;
+      } else {
+        sumVecs[nearestIndex].first += r1;
+        sumVecs[nearestIndex].second += r2;
+        numVecs[nearestIndex]++;
+      }
     }
     for (int i = 0; i < codebook.size(); i++) { //set to new values
       if (numVecs[i] > 0) {
