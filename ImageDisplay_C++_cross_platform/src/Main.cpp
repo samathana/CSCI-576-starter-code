@@ -285,6 +285,7 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
       }
     }
   } else { //m is a perfect square
+    m = sqrt(m);
     //initialize codebook:
     vector<vector<vector<int>>> codebook;
     vector<vector<vector<int>>> sumVecs(n, vector<vector<int>>(m, vector<int>(m, 0)));
