@@ -199,8 +199,11 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
       codebook.push_back({i * intervalSize + (intervalSize / 2), j * intervalSize + (intervalSize / 2)});
     }
   }
+
   //codebook refinement:
-  for (int j = 0; j < 30; j++) { //repeat 10 times
+  int curDiff = 255;
+  int iter = 0;
+  while (curDiff > 10 && iter++ < 50) { 
     sumVecs = vector<pair<int, int>>(codebook.size(), make_pair(0, 0)); //sum of inputs in an entry
     numVecs = vector<int>(codebook.size(), 0); //num inputs mapped to entry
     for (int i = 0; i < width * height - 1; i += 2) { //for every input:
@@ -221,7 +224,9 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
         numVecs[nearestIndex]++;
       }
     }
+    curDiff = 0;
     for (int i = 0; i < codebook.size(); i++) { //set to new values
+      curDiff = std::max(curDiff, std::abs(codebook[i].first - codebook[i].second));
       if (numVecs[i] > 0) {
         codebook[i].first = sumVecs[i].first / numVecs[i];
         codebook[i].second = sumVecs[i].second / numVecs[i];
