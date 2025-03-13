@@ -349,10 +349,10 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
     int closestIndex;
     for (int y = 0; y <= height - m; y += m) { 
       for (int x = 0; x <= width - m; x += m) { //each block top left corner
-        closestIndex = findClosestSq(Rbuf, Gbuf, Bbuf, x, y, codebook, color, width);
         for (int dy = 0; dy < m; dy++) {
           for (int dx = 0; dx < m; dx++) { //for each pixel in the block
             int index = (y + dy) * width + (x + dx);
+            closestIndex = findClosestSq(Rbuf, Rbuf, Rbuf, x, y, codebook, false, width);
             newR[index] = codebook[closestIndex][dy][dx]; //red
             if (color) {
               closestIndex = findClosestSq(Gbuf, Gbuf, Gbuf, x, y, codebook, false, width);
