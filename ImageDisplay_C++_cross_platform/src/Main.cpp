@@ -219,17 +219,13 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
 
   inputFile.close();
 
-  int sqrtN = sqrt(n);
-  int intervalSize = 256/sqrtN;
   if (m == 2) {
     //make initial codebook:
     vector<pair<int, int>> codebook;
     vector<pair<int, int>> sumVecs(n, make_pair(0, 0)); //sum of vectors in entry
     vector<int> numVecs(codebook.size(), 0); //num vectors, initialized to 0
-    for (int i = 0; i < sqrtN; i++) {
-      for (int j = 0; j < sqrtN; j++) { //initial, uniform codebook
-        codebook.push_back({i * intervalSize + (intervalSize / 2), j * intervalSize + (intervalSize / 2)});
-      }
+    for (int i = 0; i < n; i++) {
+      codebook.push_back({i * (256 / n), i * (256 / n)});
     }
 
     //codebook refinement:
@@ -257,11 +253,14 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
         }
       }
       curDiff = 0;
-      for (int i = 0; i < codebook.size(); i++) { //set to new values
-        curDiff = max(curDiff, abs(codebook[i].first - sumVecs[i].first / numVecs[i]));
+      for (int i = 0; i < codebook.size(); i++) {
         if (numVecs[i] > 0) {
-          codebook[i].first = sumVecs[i].first / numVecs[i];
-          codebook[i].second = sumVecs[i].second / numVecs[i];
+          int newFirst = sumVecs[i].first / numVecs[i];
+          int newSecond = sumVecs[i].second / numVecs[i];
+          curDiff = max(curDiff, abs(codebook[i].first - newFirst));
+          curDiff = max(curDiff, abs(codebook[i].second - newSecond));
+          codebook[i].first = newFirst;
+          codebook[i].second = newSecond;
         }
       }
     }
@@ -292,16 +291,8 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
     vector<vector<vector<int>>> codebook;
     vector<vector<vector<int>>> sumVecs(n, vector<vector<int>>(m, vector<int>(m, 0)));
     vector<int> numVecs(n, 0);
-    for (int i = 0; i < sqrtN; i++) {
-      for (int j = 0; j < sqrtN; j++) {
-        vector<vector<int>> block(m, vector<int>(m, 0));
-        for (int x = 0; x < m; x++) {
-          for (int y = 0; y < m; y++) {
-            block[x][y] = (i * intervalSize + (intervalSize / 2)); //uniform
-          }
-        }
-        codebook.push_back(block);
-      }
+    for (int i = 0; i < n; i++) {
+      codebook.push_back(vector<vector<int>>(m, vector<int>(m, i * 256 / n)));
     }
 
     //codebook refinement:
