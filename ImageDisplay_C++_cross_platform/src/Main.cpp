@@ -121,6 +121,7 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
   dc.DrawBitmap(inImageBitmap, 0, 0, false);
 }
 
+//for codebook assignment (m = 2)
 int findClosest(int x, int y, vector<pair<int, int>>& codebook) {
   int minDistance = 255;
   int nearestIndex = 0;
@@ -134,6 +135,7 @@ int findClosest(int x, int y, vector<pair<int, int>>& codebook) {
   return nearestIndex;
 }
 
+//for codebook refinement (m = 2)
 int findClosestCombined(int r1, int r2, int g1, int g2, int b1, int b2, vector<pair<int, int>>& codebook, bool color) {
   int minDistance = 255;
   int nearestIndex = 0;
@@ -152,7 +154,7 @@ int findClosestCombined(int r1, int r2, int g1, int g2, int b1, int b2, vector<p
   return nearestIndex;
 }
 
-
+//for codebook refinement (sq)
 int findClosestSq(vector<char>& Rbuf, vector<char>& Gbuf, vector<char>& Bbuf, int x, int y, vector<vector<vector<int>>>& codebook, bool color, int width) {
   int minDistance = 255; 
   int nearestIndex = 0;
@@ -353,7 +355,9 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
             int index = (y + dy) * width + (x + dx);
             newR[index] = codebook[closestIndex][dy][dx]; //red
             if (color) {
+              closestIndex = findClosestSq(Gbuf, Gbuf, Gbuf, x, y, codebook, false, width);
               newG[index] = codebook[closestIndex][dy][dx];
+              closestIndex = findClosestSq(Bbuf, Bbuf, Bbuf, x, y, codebook, false, width);
               newB[index] = codebook[closestIndex][dy][dx];
             } else {
               newG[index] = newR[index]; 
