@@ -121,15 +121,29 @@ void MyFrame::OnPaint(wxPaintEvent &event) {
   dc.DrawBitmap(inImageBitmap, 0, 0, false);
 }
 
-//for m = 2
-int findClosestCombined(int r1, int r2, int g1, int g2, int b1, int b2, vector<pair<tuple<int, int, int>, tuple<int, int, int>>>& codebook, bool color) {
+//for codebook assignment (m = 2)
+int findClosest(int x, int y, vector<pair<int, int>>& codebook) {
   int minDistance = 255;
   int nearestIndex = 0;
   for (int j = 0; j < codebook.size(); j++) { //find closest cluster to map to
-    double distance = sqrt(pow(r1 - get<0>(codebook[j].first), 2) + pow(r2 - get<0>(codebook[j].second), 2));
+    double distance = sqrt(pow(x - codebook[j].first, 2) + pow(y - codebook[j].second, 2));
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestIndex = j;
+    }
+  }
+  return nearestIndex;
+}
+
+//for codebook refinement (m = 2)
+int findClosestCombined(int r1, int r2, int g1, int g2, int b1, int b2, vector<pair<int, int>>& codebook, bool color) {
+  int minDistance = 255;
+  int nearestIndex = 0;
+  for (int j = 0; j < codebook.size(); j++) { //find closest cluster to map to
+    double distance = sqrt(pow(r1 - codebook[j].first, 2) + pow(r2 - codebook[j].second, 2));
     if (color) {
-      double dg = sqrt(pow(g1 - get<1>(codebook[j].first), 2) + pow(g2 - get<1>(codebook[j].second), 2));
-      double db = sqrt(pow(b1 - get<2>(codebook[j].first), 2) + pow(b2 - get<2>(codebook[j].second), 2));
+      double dg = sqrt(pow(g1 - codebook[j].first, 2) + pow(g2 - codebook[j].second, 2));
+      double db = sqrt(pow(b1 - codebook[j].first, 2) + pow(b2 - codebook[j].second, 2));
       distance += dg + db;
     }
     if (distance < minDistance) {
@@ -140,8 +154,8 @@ int findClosestCombined(int r1, int r2, int g1, int g2, int b1, int b2, vector<p
   return nearestIndex;
 }
 
-//for sq
-int findClosestSq(vector<char>& Rbuf, vector<char>& Gbuf, vector<char>& Bbuf, int x, int y, vector<vector<vector<tuple<int, int, int>>>>& codebook, bool color, int width) {
+//for codebook refinement (sq)
+int findClosestSq(vector<char>& Rbuf, vector<char>& Gbuf, vector<char>& Bbuf, int x, int y, vector<vector<vector<int>>>& codebook, bool color, int width) {
   int minDistance = 255; 
   int nearestIndex = 0;
   for (int j = 0; j < codebook.size(); j++) {
@@ -149,12 +163,12 @@ int findClosestSq(vector<char>& Rbuf, vector<char>& Gbuf, vector<char>& Bbuf, in
     for (int dy = 0; dy < codebook[j].size(); dy++) {
       for (int dx = 0; dx < codebook[j][dy].size(); dx++) {
         int index = (y + dy) * width + (x + dx);
-        int rDiff = (int) (unsigned char) Rbuf[index] - get<0>(codebook[j][dy][dx]);
+        int rDiff = (int) (unsigned char) Rbuf[index] - codebook[j][dy][dx];
         distance += rDiff * rDiff;
         if (color) {
-          int gDiff = (int) (unsigned char) Gbuf[index] - get<1>(codebook[j][dy][dx]);
+          int gDiff = (int) (unsigned char) Gbuf[index] - codebook[j][dy][dx];
           distance += gDiff * gDiff;
-          int bDiff = (int) (unsigned char) Bbuf[index] - get<2>(codebook[j][dy][dx]);
+          int bDiff = (int) (unsigned char) Bbuf[index] - codebook[j][dy][dx];
           distance += bDiff * bDiff;
         }
       }
@@ -207,18 +221,18 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
 
   if (m == 2) {
     //make initial codebook:
-    vector<pair<tuple<int, int, int>, tuple<int, int, int>>> codebook;
-    vector<pair<tuple<int, int, int>, tuple<int, int, int>>> sumVecs(n, {{0, 0, 0}, {0, 0, 0}}); //sum of vectors in entry
+    vector<pair<int, int>> codebook;
+    vector<pair<int, int>> sumVecs(n, make_pair(0, 0)); //sum of vectors in entry
     vector<int> numVecs(codebook.size(), 0); //num vectors, initialized to 0
     for (int i = 0; i < n; i++) {
-      codebook.push_back({{i * (256 / n), i * (256 / n), i * (256 / n)}, {i * (256 / n), i * (256 / n), i * (256 / n)}});
+      codebook.push_back({i * (256 / n), i * (256 / n)});
     }
 
     //codebook refinement:
     int curDiff = 255;
     int iter = 0;
     while (curDiff > 10 && iter++ < 50) { 
-      sumVecs = vector<pair<tuple<int, int, int>, tuple<int, int, int>>>(n, {{0, 0, 0}, {0, 0, 0}}); //sum of inputs in an entry
+      sumVecs = vector<pair<int, int>>(codebook.size(), make_pair(0, 0)); //sum of inputs in an entry
       numVecs = vector<int>(codebook.size(), 0); //num inputs mapped to entry
       for (int i = 0; i < width * height - 1; i += 2) { //for every input:
         int r1 = (unsigned char) Rbuf[i];
@@ -228,35 +242,25 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
         int b1 = (unsigned char) Bbuf[i];
         int b2 = (unsigned char) Bbuf[i + 1];
         int nearestIndex = findClosestCombined(r1, r2, g1, g2, b1, b2, codebook, color);
-        get<0>(sumVecs[nearestIndex].first) += r1;
-        get<1>(sumVecs[nearestIndex].first) += g1;
-        get<2>(sumVecs[nearestIndex].first) += b1;
-        get<0>(sumVecs[nearestIndex].second) += r2;
-        get<1>(sumVecs[nearestIndex].second) += g2;
-        get<2>(sumVecs[nearestIndex].second) += b2;
-        numVecs[nearestIndex]++;
+        if (color) {
+          sumVecs[nearestIndex].first += r1 + g1 + b1;
+          sumVecs[nearestIndex].second += r2 + g1 + b2;
+          numVecs[nearestIndex] += 3;
+        } else {
+          sumVecs[nearestIndex].first += r1;
+          sumVecs[nearestIndex].second += r2;
+          numVecs[nearestIndex]++;
+        }
       }
       curDiff = 0;
       for (int i = 0; i < codebook.size(); i++) {
         if (numVecs[i] > 0) {
-          int newFirst = get<0>(sumVecs[i].first) / numVecs[i];
-          int newSecond = get<0>(sumVecs[i].second) / numVecs[i];
-          curDiff = max(curDiff, abs(get<0>(codebook[i].first) - newFirst));
-          curDiff = max(curDiff, abs(get<0>(codebook[i].second) - newSecond));
-          get<0>(codebook[i].first) = newFirst;
-          get<0>(codebook[i].second) = newSecond;
-          newFirst = get<1>(sumVecs[i].first) / numVecs[i];
-          newSecond = get<1>(sumVecs[i].second) / numVecs[i];
-          curDiff = max(curDiff, abs(get<1>(codebook[i].first) - newFirst));
-          curDiff = max(curDiff, abs(get<1>(codebook[i].second) - newSecond));
-          get<1>(codebook[i].first) = newFirst;
-          get<1>(codebook[i].second) = newSecond;
-          newFirst = get<2>(sumVecs[i].first) / numVecs[i];
-          newSecond = get<2>(sumVecs[i].second) / numVecs[i];
-          curDiff = max(curDiff, abs(get<2>(codebook[i].first) - newFirst));
-          curDiff = max(curDiff, abs(get<2>(codebook[i].second) - newSecond));
-          get<2>(codebook[i].first) = newFirst;
-          get<2>(codebook[i].second) = newSecond;
+          int newFirst = sumVecs[i].first / numVecs[i];
+          int newSecond = sumVecs[i].second / numVecs[i];
+          curDiff = max(curDiff, abs(codebook[i].first - newFirst));
+          curDiff = max(curDiff, abs(codebook[i].second - newSecond));
+          codebook[i].first = newFirst;
+          codebook[i].second = newSecond;
         }
       }
     }
@@ -264,17 +268,17 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
     //set pixels to codebook:
     int closestIndex;
     for (int i = 0; i < width * height - 1; i += 2) {
-      closestIndex = findClosestCombined((int) (unsigned char) Rbuf[i], (int) (unsigned char) Rbuf[i + 1], (int) (unsigned char) Gbuf[i], (int) (unsigned char) Gbuf[i + 1], (int) (unsigned char) Bbuf[i], (int) (unsigned char) Bbuf[i + 1], codebook, color);
+      closestIndex = findClosest((int) (unsigned char) Rbuf[i], (int) (unsigned char) Rbuf[i + 1], codebook);
+      newR[i] = codebook[closestIndex].first;
+      newR[i + 1] = codebook[closestIndex].second;
       if (color) {
-        newR[i] = get<0>(codebook[closestIndex].first);
-        newR[i + 1] = get<0>(codebook[closestIndex].second);
-        newG[i] = get<1>(codebook[closestIndex].first);
-        newG[i + 1] = get<1>(codebook[closestIndex].second);
-        newB[i] = get<2>(codebook[closestIndex].first);
-        newB[i + 1] = get<2>(codebook[closestIndex].second);
+        closestIndex = findClosest((int) (unsigned char) Gbuf[i], (int) (unsigned char) Gbuf[i + 1], codebook);
+        newG[i] = codebook[closestIndex].first;
+        newG[i + 1] = codebook[closestIndex].second;
+        closestIndex = findClosest((int) (unsigned char) Bbuf[i], (int) (unsigned char) Bbuf[i + 1], codebook);
+        newB[i] = codebook[closestIndex].first;
+        newB[i + 1] = codebook[closestIndex].second;
       } else { //grayscale
-        newR[i] = get<0>(codebook[closestIndex].first);
-        newR[i + 1] = get<0>(codebook[closestIndex].second);
         newG[i] = newR[i];
         newB[i] = newR[i];
         newG[i + 1] = newR[i + 1];
@@ -284,49 +288,47 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
   } else { //m is a perfect square
     m = sqrt(m);
     //initialize codebook:
-    vector<vector<vector<tuple<int, int, int>>>> codebook;
-    vector<vector<vector<tuple<int, int, int>>>> sumVecs(n, vector<vector<tuple<int, int, int>>>(m, vector<tuple<int, int, int>>(m, make_tuple(0, 0, 0))));
+    vector<vector<vector<int>>> codebook;
+    vector<vector<vector<int>>> sumVecs(n, vector<vector<int>>(m, vector<int>(m, 0)));
     vector<int> numVecs(n, 0);
     for (int i = 0; i < n; i++) {
-      int value = i * 256 / n;
-      vector<vector<tuple<int, int, int>>> block(m, vector<tuple<int, int, int>>(m, make_tuple(value, value, value)));
-      codebook.push_back(block);
+      codebook.push_back(vector<vector<int>>(m, vector<int>(m, i * 256 / n)));
     }
 
     //codebook refinement:
     int curDiff = 255;
     int iter = 0;
     while (curDiff > 10 && iter++ < 50) {
-      vector<vector<vector<tuple<int, int, int>>>> sumVecs(n, vector<vector<tuple<int, int, int>>>(m, vector<tuple<int, int, int>>(m, make_tuple(0, 0, 0))));
+      sumVecs = vector<vector<vector<int>>>(n, vector<vector<int>>(m, vector<int>(m, 0))); //reset
       numVecs = vector<int>(n, 0);
 
       for (int y = 0; y <= height - m; y += m) {
         for (int x = 0; x <= width - m; x += m) { //traverse, finding each block's top left corner
           int nearestIndex = findClosestSq(Rbuf, Gbuf, Bbuf, x, y, codebook, color, width);
-          for (int j = 0; j < m; j++) {
-            for (int k = 0; k < m; k++) { //each pixel in the block
-              get<0>(sumVecs[nearestIndex][j][k]) += (int) (unsigned char) Rbuf[(y + j) * width + (x + k)];
-              get<1>(sumVecs[nearestIndex][j][k]) += (int) (unsigned char) Gbuf[(y + j) * width + (x + k)];
-              get<2>(sumVecs[nearestIndex][j][k]) += (int) (unsigned char) Bbuf[(y + j) * width + (x + k)];
+          if (color) {
+            for (int j = 0; j < m; j++) {
+              for (int k = 0; k < m; k++) { //each pixel in the block
+                sumVecs[nearestIndex][j][k] += (int) (unsigned char) Rbuf[(y + j) * width + (x + k)];
+                sumVecs[nearestIndex][j][k] += (int) (unsigned char) Gbuf[(y + j) * width + (x + k)];
+                sumVecs[nearestIndex][j][k] += (int) (unsigned char) Bbuf[(y + j) * width + (x + k)];
+              }
             }
+            numVecs[nearestIndex] += 3; //r, g, and b
+          } else {
+            for (int j = 0; j < m; j++) {
+              for (int k = 0; k < m; k++)
+                sumVecs[nearestIndex][j][k] += (int) (unsigned char) Rbuf[(y + j) * width + (x + k)];
+            }
+            numVecs[nearestIndex]++;
           }
-          numVecs[nearestIndex] ++; //r, g, and b
           curDiff = 0;
           for (int i = 0; i < codebook.size(); i++) { //update every entry, calc diff
             if (numVecs[i] > 0) { //avoid div by 0
               for (int j = 0; j < m; j++) {
                 for (int k = 0; k < m; k++) {
-                  int newValue = get<0>(sumVecs[i][j][k]) / numVecs[i];
-                  curDiff = max(curDiff, abs(get<0>(codebook[i][j][k]) - newValue));
-                  get<0>(codebook[i][j][k]) = newValue;
-                  if (color) {
-                    newValue = get<1>(sumVecs[i][j][k]) / numVecs[i];
-                    curDiff = max(curDiff, abs(get<1>(codebook[i][j][k]) - newValue));
-                    get<1>(codebook[i][j][k]) = newValue;
-                    newValue = get<2>(sumVecs[i][j][k]) / numVecs[i];
-                    curDiff = max(curDiff, abs(get<2>(codebook[i][j][k]) - newValue));
-                    get<2>(codebook[i][j][k]) = newValue;
-                  }
+                  int newValue = sumVecs[i][j][k] / numVecs[i];
+                  curDiff = max(curDiff, abs(codebook[i][j][k] - newValue));
+                  codebook[i][j][k] = newValue;
                 }
               }
             }
@@ -342,10 +344,12 @@ unsigned char *readImageData(string imagePath, int width, int height, int m, int
           for (int dx = 0; dx < m; dx++) { //for each pixel in the block
             int index = (y + dy) * width + (x + dx);
             closestIndex = findClosestSq(Rbuf, Rbuf, Rbuf, x, y, codebook, false, width);
-            newR[index] = get<0>(codebook[closestIndex][dy][dx]); //red
+            newR[index] = codebook[closestIndex][dy][dx]; //red
             if (color) {
-              newG[index] = get<1>(codebook[closestIndex][dy][dx]);
-              newB[index] = get<2>(codebook[closestIndex][dy][dx]);
+              closestIndex = findClosestSq(Gbuf, Gbuf, Gbuf, x, y, codebook, false, width);
+              newG[index] = codebook[closestIndex][dy][dx];
+              closestIndex = findClosestSq(Bbuf, Bbuf, Bbuf, x, y, codebook, false, width);
+              newB[index] = codebook[closestIndex][dy][dx];
             } else {
               newG[index] = newR[index]; 
               newB[index] = newR[index];
